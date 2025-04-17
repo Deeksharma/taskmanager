@@ -57,7 +57,7 @@ func (as *ApiServer) Stop() <-chan struct{} {
 		log.Info(as.ctx, "shutting down...")
 
 		// set timeout for the ops to be done to prevent system hang
-		timeout := 20 * time.Second
+		timeout := 2 * time.Second // TODO: change this
 		timeoutFunc := time.AfterFunc(timeout, func() {
 			log.Infof(as.ctx, "timeout %d ms has been elapsed, force exit", timeout.Milliseconds())
 			os.Exit(0)

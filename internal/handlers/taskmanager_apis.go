@@ -17,16 +17,14 @@ type TaskManagementHandler struct {
 }
 
 func NewTaskManagementHandler(taskRepo repository.TaskDatabaseRepo) *TaskManagementHandler {
-	taskManagementService := service.NewDeploymentService(taskRepo)
+	taskManagementService := service.NewTaskManagementService(taskRepo)
 	return &TaskManagementHandler{
 		TaskManagementService: taskManagementService,
 	}
 }
 
-// New creates a new deployment - in deployed state - only for admins
+// New creates a new task - in created state
 func (h *TaskManagementHandler) New(c *gin.Context) {
-	taskId := c.Param("taskId")
-
 	task := models.Task{}
 	if err := c.BindJSON(&task); err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
@@ -36,17 +34,17 @@ func (h *TaskManagementHandler) New(c *gin.Context) {
 		return
 	}
 
-	deployment, err := h.TaskManagementService.New(c, taskId, &task)
+	newTask, err := h.TaskManagementService.New(c, &task)
 	if err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
-			"error":   err,
-			"task_id": taskId,
-		}, "error deploying portfolio")
+			"error": err,
+			"task":  task,
+		}, "error creating a new task")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, deployment)
+	c.JSON(http.StatusCreated, newTask)
 }
 
 // Update updates the task
@@ -62,55 +60,101 @@ func (h *TaskManagementHandler) Update(c *gin.Context) {
 		return
 	}
 
-	deployment, err := h.TaskManagementService.Update(c, taskId, &task)
+	updatedFields := make(map[string]interface{})
+	updatedFields["title"] = task.Title
+	updatedFields["owner"] = task.Owner
+	updatedFields["description"] = task.Description
+	updatedFields["status"] = task.Status
+
+	updatedTask, err := h.TaskManagementService.Update(c, taskId, updatedFields)
 	if err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error":   err,
 			"task_id": taskId,
-		}, "error deploying portfolio")
+		}, "error updating the task")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, deployment)
+	c.JSON(http.StatusOK, updatedTask)
+}
+
+// PartialUpdate updates the task
+func (h *TaskManagementHandler) PartialUpdate(c *gin.Context) {
+	taskId := c.Param("taskId")
+
+	task := models.Task{}
+	if err := c.BindJSON(&task); err != nil {
+		log.ErrorWithFields(c, map[string]interface{}{
+			"error": err,
+		}, "error binding request body")
+		c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	updatedFields := make(map[string]interface{})
+	if task.Title != "" {
+		updatedFields["title"] = task.Title
+	}
+	if task.Owner != "" {
+		updatedFields["owner"] = task.Owner
+	}
+	if task.Description != "" {
+		updatedFields["description"] = task.Description
+	}
+	if task.Status != "" {
+		updatedFields["status"] = task.Status
+	}
+
+	updatedTask, err := h.TaskManagementService.Update(c, taskId, updatedFields)
+	if err != nil {
+		log.ErrorWithFields(c, map[string]interface{}{
+			"error":   err,
+			"task_id": taskId,
+		}, "error updating the task")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedTask)
 }
 
 // ById handler for retrieving task by id
 func (h *TaskManagementHandler) ById(c *gin.Context) {
 	taskId := c.Param("taskId")
 
-	deployment, err := h.TaskManagementService.ById(c, taskId)
+	task, err := h.TaskManagementService.ById(c, taskId)
 
 	if err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error":   err,
 			"task_id": taskId,
-		}, "error fetching deployment")
+		}, "error fetching task")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, deployment)
+	c.JSON(http.StatusOK, task)
 }
 
 // All handler for retrieving full list of tasks
 func (h *TaskManagementHandler) All(c *gin.Context) {
-	deployments, err := h.TaskManagementService.All(c, make(map[string]interface{}))
+	tasks, err := h.TaskManagementService.All(c, make(map[string]interface{}))
 	if err != nil && err == mongo.ErrNoDocuments {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
-		}, "no deployments present")
+		}, "no tasks present")
 		c.AbortWithStatusJSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	} else if err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
-		}, "error while fetching deployments")
+		}, "error while fetching tasks")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, deployments)
+	c.JSON(http.StatusOK, tasks)
 }
 
 // Delete requests to delete the task by id
@@ -129,7 +173,7 @@ func (h *TaskManagementHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"status": enum.Discarded,
+		"status": enum.Deleted,
 	})
 }
 

@@ -4,18 +4,16 @@ import (
 	"context"
 	"github.com/Deeksharma/taskmanager/internal/log"
 	"github.com/Deeksharma/taskmanager/internal/models"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"time"
 )
 
-func (md *taskDBRepo) New(ctx context.Context, submission *models.Task) (int, error) {
-	submission.CreatedAt = time.Now()
-	submission.UpdatedAt = time.Now()
-	_, err := md.TaskCollection.InsertOne(ctx, submission)
+func (md *taskDBRepo) New(ctx context.Context, task *models.Task) (int, error) {
+	task.CreatedAt = time.Now()
+	task.UpdatedAt = time.Now()
+	_, err := md.TaskCollection.InsertOne(ctx, task)
 	if err != nil {
 		return 0, err
 	}
@@ -29,7 +27,7 @@ func (md *taskDBRepo) Update(ctx context.Context, id string, updateFields map[st
 		update = append(update, bson.D{bson.E{Key: "$set", Value: bson.D{bson.E{Key: key, Value: value}}}})
 	}
 
-	objID, err := primitive.ObjectIDFromHex(id)
+	objID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -46,19 +44,19 @@ func (md *taskDBRepo) Update(ctx context.Context, id string, updateFields map[st
 	return nil
 }
 
-func (md *taskDBRepo) ById(ctx context.Context, id string) (deployment *models.Task, err error) {
-	objID, err := primitive.ObjectIDFromHex(id)
+func (md *taskDBRepo) ById(ctx context.Context, id string) (task *models.Task, err error) {
+	objID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
-		return deployment, err
+		return task, err
 	}
-	err = md.TaskCollection.FindOne(ctx, bson.D{bson.E{Key: "_id", Value: objID}}).Decode(&deployment)
+	err = md.TaskCollection.FindOne(ctx, bson.D{bson.E{Key: "_id", Value: objID}}).Decode(&task)
 	if err != nil {
-		return deployment, err
+		return task, err
 	}
-	return deployment, nil
+	return task, nil
 }
 
-func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}) (deployments []*models.Task, err error) {
+func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}) (tasks []*models.Task, err error) {
 	filterConditions := bson.M{}
 	for key, value := range filter {
 		filterConditions[key] = value
@@ -66,17 +64,17 @@ func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}) (d
 
 	cursor, err := md.TaskCollection.Find(ctx, filterConditions, options.Find().SetSort(bson.D{bson.E{Key: "updated_at", Value: -1}}))
 	if err != nil {
-		return deployments, err
+		return tasks, err
 	}
 	for cursor.Next(ctx) {
-		var submission *models.Task
-		err = cursor.Decode(&submission)
+		var task *models.Task
+		err = cursor.Decode(&task)
 		if err != nil {
 			log.InfoWithFields(ctx, map[string]interface{}{
 				"error": err,
 			}, "Error while decoding document")
 		}
-		deployments = append(deployments, submission)
+		tasks = append(tasks, task)
 	}
 
 	if err := cursor.Err(); err != nil {
@@ -91,9 +89,17 @@ func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}) (d
 		return nil, err
 	}
 
-	return deployments, nil
+	return tasks, nil
 }
 
-func (*taskDBRepo) Delete(ctx context.Context, id string) error {
+func (md *taskDBRepo) Delete(ctx context.Context, id string) error {
+	objID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	result := md.TaskCollection.FindOneAndDelete(ctx, bson.D{bson.E{Key: "_id", Value: objID}})
+	if result.Err() != nil {
+		return result.Err()
+	}
 	return nil
 }

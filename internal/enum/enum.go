@@ -8,7 +8,7 @@ const (
 	Created    TaskStatus = "created"
 	InProgress TaskStatus = "in progress"
 	Succeeded  TaskStatus = "succeeded"
-	Discarded  TaskStatus = "discarded"
+	Deleted    TaskStatus = "deleted"
 )
 
 func GetTaskStatus(status string) (TaskStatus, error) {
@@ -20,14 +20,14 @@ func GetTaskStatus(status string) (TaskStatus, error) {
 	case "succeeded":
 		return Succeeded, nil
 	case "discarded":
-		return Discarded, nil
+		return Deleted, nil
 	default:
-		return "", errors.New("no such deployment status available")
+		return "", errors.New("no such task status available")
 	}
 }
 
 func GetAllTaskStatuses() []TaskStatus {
-	return []TaskStatus{Created, InProgress, Succeeded, Discarded}
+	return []TaskStatus{Created, InProgress, Succeeded, Deleted}
 }
 
 type RoleType string

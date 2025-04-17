@@ -17,7 +17,7 @@ type taskDBRepo struct {
 }
 
 type testTaskDBRepo struct {
-	DeploymentCollection *mongodb.Collection
+	TaskCollection *mongodb.Collection
 }
 
 func NewMongoDB(ctx context.Context) (*mongo.Database, func() error) {

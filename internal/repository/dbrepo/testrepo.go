@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (*testTaskDBRepo) New(ctx context.Context, portfolio *models.Task) (int, error) {
+func (*testTaskDBRepo) New(ctx context.Context, task *models.Task) (int, error) {
 	return 0, nil
 }
 
