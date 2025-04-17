@@ -38,8 +38,8 @@ func (s *TaskManagementService) ById(ctx context.Context, taskId string) (*model
 }
 
 // All returns all tasks
-func (s *TaskManagementService) All(ctx context.Context, filter map[string]interface{}) ([]*models.Task, error) {
-	tasks, err := s.TaskRepo.All(ctx, filter)
+func (s *TaskManagementService) All(ctx context.Context, filter map[string]interface{}, pagination map[string]int32, sort map[string]interface{}) ([]*models.Task, error) {
+	tasks, err := s.TaskRepo.All(ctx, filter, pagination, sort)
 	if err != nil {
 		log.ErrorWithFields(ctx, map[string]interface{}{
 			"error": err,

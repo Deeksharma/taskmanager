@@ -6,7 +6,6 @@ import (
 	"github.com/Deeksharma/taskmanager/internal/models"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"time"
 )
 
@@ -56,40 +55,56 @@ func (md *taskDBRepo) ById(ctx context.Context, id string) (task *models.Task, e
 	return task, nil
 }
 
-func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}) (tasks []*models.Task, err error) {
-	filterConditions := bson.M{}
+func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}, pagination map[string]int32, sort map[string]interface{}) ([]*models.Task, error) {
+	filterConditions := bson.D{}
 	for key, value := range filter {
-		filterConditions[key] = value
+		filterConditions = append(filterConditions, bson.E{Key: key, Value: value})
+	}
+	matchStage := bson.D{
+		{"$match", filterConditions},
+	}
+	groupStage := bson.D{
+		{"$group", bson.D{
+			{"_id", bson.D{{"_id", "null"}}},
+			{"total_count", bson.D{{"$sum", 1}}},
+			{"data", bson.D{{"$push", "$$ROOT"}}},
+		},
+		}}
+	projectStage := bson.D{{"$project", bson.D{
+		{"_id", 0},
+		{"total_count", 1},
+		{"tasks", bson.D{{"$slice", []interface{}{"$data", pagination["startIndex"], pagination["recordPerPage"]}}}},
+	}}}
+	sortStage := bson.D{
+		{"$sort", bson.D{
+			{sort["sortBy"].(string), sort["sortOrder"].(int)},
+		}},
 	}
 
-	cursor, err := md.TaskCollection.Find(ctx, filterConditions, options.Find().SetSort(bson.D{bson.E{Key: "updated_at", Value: -1}}))
+	result, err := md.TaskCollection.Aggregate(ctx,
+		mongo.Pipeline{matchStage, sortStage, groupStage, projectStage})
+
 	if err != nil {
-		return tasks, err
-	}
-	for cursor.Next(ctx) {
-		var task *models.Task
-		err = cursor.Decode(&task)
-		if err != nil {
-			log.InfoWithFields(ctx, map[string]interface{}{
-				"error": err,
-			}, "Error while decoding document")
-		}
-		tasks = append(tasks, task)
-	}
-
-	if err := cursor.Err(); err != nil {
-		log.InfoWithFields(ctx, map[string]interface{}{
+		log.ErrorWithFields(ctx, map[string]interface{}{
 			"error": err,
-		}, "Error while decoding document")
-	}
-
-	//Close the cursor once finished
-	err = cursor.Close(ctx)
-	if err != nil {
+		}, "Error while aggregating documents")
 		return nil, err
 	}
-
-	return tasks, nil
+	type TaskGroup struct {
+		Tasks      []*models.Task `bson:"tasks"`
+		TotalCount int            `bson:"total_count"`
+	}
+	var allTasks []TaskGroup
+	if err := result.All(ctx, &allTasks); err != nil {
+		log.ErrorWithFields(ctx, map[string]interface{}{
+			"error": err,
+		}, "Error while fetching documents")
+		return nil, err
+	}
+	log.InfoWithFields(ctx, map[string]interface{}{
+		"allTasks": allTasks,
+	}, "Successfully fetched documents")
+	return allTasks[0].Tasks, nil
 }
 
 func (md *taskDBRepo) Delete(ctx context.Context, id string) error {

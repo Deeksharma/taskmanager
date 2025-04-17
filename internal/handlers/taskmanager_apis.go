@@ -7,9 +7,11 @@ import (
 	"github.com/Deeksharma/taskmanager/internal/models"
 	"github.com/Deeksharma/taskmanager/internal/repository"
 	"github.com/Deeksharma/taskmanager/internal/service"
+	"github.com/Deeksharma/taskmanager/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"net/http"
+	"strconv"
 )
 
 type TaskManagementHandler struct {
@@ -139,7 +141,46 @@ func (h *TaskManagementHandler) ById(c *gin.Context) {
 
 // All handler for retrieving full list of tasks
 func (h *TaskManagementHandler) All(c *gin.Context) {
-	tasks, err := h.TaskManagementService.All(c, make(map[string]interface{}))
+	// pagination
+	pagination := make(map[string]int32)
+	recordPerPage, err := strconv.Atoi(c.Query("recordPerPage"))
+	if err != nil || recordPerPage < 1 {
+		recordPerPage = 10
+	}
+	page, err1 := strconv.Atoi(c.Query("page"))
+	if err1 != nil || page < 1 {
+		page = 1
+	}
+	startIndex := (page - 1) * recordPerPage
+	pagination["startIndex"] = int32(startIndex)
+	pagination["recordPerPage"] = int32(recordPerPage)
+
+	// filtering
+	filters := make(map[string]interface{})
+	if c.Query("status") != "" {
+		filters["status"] = c.Query("status")
+	}
+	if c.Query("owner") != "" {
+		filters["owner"] = c.Query("owner")
+	}
+
+	// sorting
+	sort := make(map[string]interface{})
+	sortBy := "updated_at"
+	if c.Query("sortBy") != "" && utils.Contains(models.SortingColumns, c.Query("sortBy")) {
+		sortBy = c.Query("sortBy")
+	}
+	sortOrder := -1
+	if c.Query("order") != "" {
+		if c.Query("order") == "asc" {
+			sortOrder = 1
+		}
+	}
+	sort["sortBy"] = sortBy
+	sort["sortOrder"] = sortOrder
+	log.InfoWithFields(c, sort, "Fetching tasks")
+
+	tasks, err := h.TaskManagementService.All(c, filters, pagination, sort)
 	if err != nil && err == mongo.ErrNoDocuments {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
@@ -150,7 +191,7 @@ func (h *TaskManagementHandler) All(c *gin.Context) {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
 		}, "error while fetching tasks")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error() + " : error occurred while aggregating data"})
 		return
 	}
 

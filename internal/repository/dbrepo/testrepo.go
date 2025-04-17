@@ -40,7 +40,7 @@ func (*testTaskDBRepo) ById(ctx context.Context, id string) (*models.Task, error
 	return &models.Task{}, nil
 }
 
-func (*testTaskDBRepo) All(ctx context.Context, fields map[string]interface{}) ([]*models.Task, error) {
+func (*testTaskDBRepo) All(ctx context.Context, fields map[string]interface{}, pagination map[string]int32, sort map[string]interface{}) ([]*models.Task, error) {
 	return []*models.Task{}, nil
 }
 
