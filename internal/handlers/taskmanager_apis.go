@@ -1,14 +1,16 @@
 package handlers
 
 import (
-	"fmt"
+	"context"
 	"github.com/Deeksharma/taskmanager/internal/enum"
+	"github.com/Deeksharma/taskmanager/internal/errors"
 	"github.com/Deeksharma/taskmanager/internal/log"
 	"github.com/Deeksharma/taskmanager/internal/models"
 	"github.com/Deeksharma/taskmanager/internal/repository"
 	"github.com/Deeksharma/taskmanager/internal/service"
 	"github.com/Deeksharma/taskmanager/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"net/http"
 	"strconv"
@@ -17,6 +19,8 @@ import (
 type TaskManagementHandler struct {
 	TaskManagementService *service.TaskManagementService
 }
+
+var validate = validator.New()
 
 func NewTaskManagementHandler(taskRepo repository.TaskDatabaseRepo) *TaskManagementHandler {
 	taskManagementService := service.NewTaskManagementService(taskRepo)
@@ -27,12 +31,12 @@ func NewTaskManagementHandler(taskRepo repository.TaskDatabaseRepo) *TaskManagem
 
 // New creates a new task - in created state
 func (h *TaskManagementHandler) New(c *gin.Context) {
-	task := models.Task{}
+	task := models.CreateTaskRequestBody{}
 	if err := c.BindJSON(&task); err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
 		}, "error binding request body")
-		c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -42,7 +46,7 @@ func (h *TaskManagementHandler) New(c *gin.Context) {
 			"error": err,
 			"task":  task,
 		}, "error creating a new task")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -53,7 +57,7 @@ func (h *TaskManagementHandler) New(c *gin.Context) {
 func (h *TaskManagementHandler) Update(c *gin.Context) {
 	taskId := c.Param("taskId")
 
-	task := models.Task{}
+	task := models.UpdateTaskRequestBody{}
 	if err := c.BindJSON(&task); err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
@@ -61,7 +65,11 @@ func (h *TaskManagementHandler) Update(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-
+	validationErr := validate.Struct(task)
+	if validationErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": validationErr.Error()})
+		return
+	}
 	updatedFields := make(map[string]interface{})
 	updatedFields["title"] = task.Title
 	updatedFields["owner"] = task.Owner
@@ -74,7 +82,7 @@ func (h *TaskManagementHandler) Update(c *gin.Context) {
 			"error":   err,
 			"task_id": taskId,
 		}, "error updating the task")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -90,7 +98,7 @@ func (h *TaskManagementHandler) PartialUpdate(c *gin.Context) {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
 		}, "error binding request body")
-		c.AbortWithStatusJSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -114,7 +122,7 @@ func (h *TaskManagementHandler) PartialUpdate(c *gin.Context) {
 			"error":   err,
 			"task_id": taskId,
 		}, "error updating the task")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -132,7 +140,7 @@ func (h *TaskManagementHandler) ById(c *gin.Context) {
 			"error":   err,
 			"task_id": taskId,
 		}, "error fetching task")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -160,7 +168,11 @@ func (h *TaskManagementHandler) All(c *gin.Context) {
 	if c.Query("status") != "" {
 		filters["status"] = c.Query("status")
 	}
-	if c.Query("owner") != "" {
+	// if user is not admin then only show their tasks
+	if !h.IsAdmin(c) {
+		owner, _ := c.Value("user_id").(*string)
+		filters["owner"] = owner
+	} else if c.Query("owner") != "" {
 		filters["owner"] = c.Query("owner")
 	}
 
@@ -185,7 +197,7 @@ func (h *TaskManagementHandler) All(c *gin.Context) {
 		log.ErrorWithFields(c, map[string]interface{}{
 			"error": err,
 		}, "no tasks present")
-		c.AbortWithStatusJSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	} else if err != nil {
 		log.ErrorWithFields(c, map[string]interface{}{
@@ -209,7 +221,7 @@ func (h *TaskManagementHandler) Delete(c *gin.Context) {
 			"error":   err,
 			"task_id": taskId,
 		}, "cannot delete task")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -221,17 +233,36 @@ func (h *TaskManagementHandler) Delete(c *gin.Context) {
 // IsTaskOwner middleware checks if user is owner of the task
 func (h *TaskManagementHandler) IsTaskOwner() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userType := c.GetString("user_type")
-		userId := c.GetString("user_id")
+		taskId := c.Param("taskId")
 
-		if userType != "ADMIN" || userId == "" { // TODO: correct the logic here
+		if !h.IsAdmin(c) && !h.IsOwner(c, taskId) {
 			log.ErrorWithFields(c, map[string]interface{}{
-				"user_type": userType,
-				"user_id":   userId,
+				"task_id": taskId,
 			}, "authorization failed")
-			c.AbortWithStatusJSON(http.StatusForbidden, map[string]string{"error": fmt.Errorf("authorization failed").Error()})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": errors.ErrAuthorizationFailed})
 			return
 		}
 		c.Next()
 	}
+}
+
+// IsAdmin return true if user is Admin, else false
+func (h *TaskManagementHandler) IsAdmin(c context.Context) bool {
+	admin, _ := c.Value("user_type").(*string)
+	return *admin == string(enum.AdminRole)
+}
+
+// IsOwner checks if the user is owner of the task
+func (h *TaskManagementHandler) IsOwner(ctx context.Context, taskId string) bool {
+	task, err := h.TaskManagementService.ById(ctx, taskId)
+	var owner *string
+	owner, _ = ctx.Value("user_id").(*string)
+	log.InfoWithFields(ctx, map[string]interface{}{
+		"isAdmin":  owner,
+		"tasOwner": task.Owner,
+	}, "task is owner")
+	if err != nil {
+		return false
+	}
+	return task.Owner == *owner
 }

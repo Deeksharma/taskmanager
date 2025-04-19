@@ -5,10 +5,10 @@ import "errors"
 type TaskStatus string
 
 const (
-	Created    TaskStatus = "created"
-	InProgress TaskStatus = "in progress"
-	Succeeded  TaskStatus = "succeeded"
-	Deleted    TaskStatus = "deleted"
+	Created    TaskStatus = "Created"
+	InProgress TaskStatus = "InProgress"
+	Succeeded  TaskStatus = "Succeeded"
+	Deleted    TaskStatus = "Deleted"
 )
 
 func GetTaskStatus(status string) (TaskStatus, error) {

@@ -19,5 +19,17 @@ type Task struct {
 	UpdatedAt   time.Time       `json:"updated_at" bson:"updated_at"`
 }
 
+type CreateTaskRequestBody struct {
+	Title       string `json:"title" bson:"title" validate:"required"`
+	Description string `json:"description" bson:"description" validate:"required"`
+}
+
+type UpdateTaskRequestBody struct {
+	Title       string          `json:"title" bson:"title"`
+	Description string          `json:"description" bson:"description"`
+	Owner       string          `json:"owner" bson:"owner"`
+	Status      enum.TaskStatus `json:"status" bson:"status" validate:"eq=Created|eq=InProgress|eq=Succeeded|eq=Deleted"`
+}
+
 var SortingColumns = []string{"title", "owner", "created_at", "updated_at"}
 var FilteringColumns = []string{"owner", "status"}

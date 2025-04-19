@@ -19,7 +19,6 @@ type Claims struct {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		var header = c.Request.Header.Get("Authorization")
 		authToken := strings.Split(header, "Bearer ")
 		if header == "" || len(authToken) < 2 {
@@ -37,7 +36,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		claims := &Claims{}
-
 		tkn, err := jwt.ParseWithClaims(tokenString, claims, keyfunc)
 
 		if err != nil {

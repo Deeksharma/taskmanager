@@ -50,12 +50,14 @@ func (s *TaskManagementService) All(ctx context.Context, filter map[string]inter
 }
 
 // New creates a new task in 'created' state
-func (s *TaskManagementService) New(ctx context.Context, taskRequest *models.Task) (*models.Task, error) {
+func (s *TaskManagementService) New(ctx context.Context, taskRequest *models.CreateTaskRequestBody) (*models.Task, error) {
 	id := bson.NewObjectID()
+	owner, _ := ctx.Value("user_id").(*string)
+
 	task := &models.Task{
 		ID:          id,
 		Title:       taskRequest.Title,
-		Owner:       taskRequest.Owner,
+		Owner:       *owner,
 		Description: taskRequest.Description,
 		TaskID:      id.Hex(),
 		Status:      enum.Created,
