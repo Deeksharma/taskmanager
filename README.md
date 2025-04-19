@@ -30,6 +30,9 @@ To run the linter and check code quality:
 make lint
 ```
 
+The db documents can be seen using mongo express on the URL http://0.0.0.0:8081/db/taskmanager/task, use the mongo auth
+cred present in the docker.env.dev file.
+
 ### API Documentation
 
 The service implements simple JWT-based authentication. Clients must include the token in the `Authorization` header
