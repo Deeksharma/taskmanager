@@ -16,8 +16,7 @@ server:
 
 #database configs
 database:
-#  connection_uri: "mongodb://deeksha:password@mongodb:27017/"
-  connection_uri: "mongodb://deeksha:password@localhost:27017/"
+  connection_uri: "mongodb://deeksha:password@mongodb:27017/"
   database: "taskmanager"
   connection_timeout: 5
   max_pool_size: 10

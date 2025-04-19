@@ -95,10 +95,6 @@ func (s *TaskManagementService) Update(ctx context.Context, taskId string, updat
 	if ok {
 		task.Title = updatedTitle.(string)
 	}
-	updatedOwner, ok := updatedFields["owner"]
-	if ok {
-		task.Owner = updatedOwner.(string)
-	}
 	updatedDescription, ok := updatedFields["description"]
 	if ok {
 		task.Description = updatedDescription.(string)

@@ -72,7 +72,6 @@ func (h *TaskManagementHandler) Update(c *gin.Context) {
 	}
 	updatedFields := make(map[string]interface{})
 	updatedFields["title"] = task.Title
-	updatedFields["owner"] = task.Owner
 	updatedFields["description"] = task.Description
 	updatedFields["status"] = task.Status
 
@@ -105,9 +104,6 @@ func (h *TaskManagementHandler) PartialUpdate(c *gin.Context) {
 	updatedFields := make(map[string]interface{})
 	if task.Title != "" {
 		updatedFields["title"] = task.Title
-	}
-	if task.Owner != "" {
-		updatedFields["owner"] = task.Owner
 	}
 	if task.Description != "" {
 		updatedFields["description"] = task.Description

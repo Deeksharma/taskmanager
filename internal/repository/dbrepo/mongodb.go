@@ -61,23 +61,23 @@ func (md *taskDBRepo) All(ctx context.Context, filter map[string]interface{}, pa
 		filterConditions = append(filterConditions, bson.E{Key: key, Value: value})
 	}
 	matchStage := bson.D{
-		{"$match", filterConditions},
+		{Key: "$match", Value: filterConditions},
 	}
 	groupStage := bson.D{
-		{"$group", bson.D{
-			{"_id", bson.D{{"_id", "null"}}},
-			{"total_count", bson.D{{"$sum", 1}}},
-			{"data", bson.D{{"$push", "$$ROOT"}}},
+		{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: bson.D{{Key: "_id", Value: "null"}}},
+			{Key: "total_count", Value: bson.D{{Key: "$sum", Value: 1}}},
+			{Key: "data", Value: bson.D{{Key: "$push", Value: "$$ROOT"}}},
 		},
 		}}
-	projectStage := bson.D{{"$project", bson.D{
-		{"_id", 0},
-		{"total_count", 1},
-		{"tasks", bson.D{{"$slice", []interface{}{"$data", pagination["startIndex"], pagination["recordPerPage"]}}}},
+	projectStage := bson.D{{Key: "$project", Value: bson.D{
+		{Key: "_id", Value: 0},
+		{Key: "total_count", Value: 1},
+		{Key: "tasks", Value: bson.D{{Key: "$slice", Value: []interface{}{"$data", pagination["startIndex"], pagination["recordPerPage"]}}}},
 	}}}
 	sortStage := bson.D{
-		{"$sort", bson.D{
-			{sort["sortBy"].(string), sort["sortOrder"].(int)},
+		{Key: "$sort", Value: bson.D{
+			{Key: sort["sortBy"].(string), Value: sort["sortOrder"].(int)},
 		}},
 	}
 

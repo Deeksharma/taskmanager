@@ -5,12 +5,12 @@ logs_dev:
 	docker attach taskmanager
 
 logs:
-	docker logs taskmanager
+	docker attach taskmanager
 
 kill_dev:
 	docker-compose -f docker-compose.yml --env-file ./docker.env.dev down
 	docker-compose -f docker-compose.yml --env-file ./docker.env.dev rm
-	docker rmi taskmanagers
+	docker rmi taskmanager
 
 lint:
 	cd cmd/taskmanager

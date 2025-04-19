@@ -27,8 +27,7 @@ type CreateTaskRequestBody struct {
 type UpdateTaskRequestBody struct {
 	Title       string          `json:"title" bson:"title"`
 	Description string          `json:"description" bson:"description"`
-	Owner       string          `json:"owner" bson:"owner"`
-	Status      enum.TaskStatus `json:"status" bson:"status" validate:"eq=Created|eq=InProgress|eq=Succeeded|eq=Deleted"`
+	Status      enum.TaskStatus `json:"status" bson:"status" validate:"eq=Created|eq=InProgress|eq=Succeeded|eq=Discarded"`
 }
 
 var SortingColumns = []string{"title", "owner", "created_at", "updated_at"}

@@ -22,8 +22,7 @@ RUN chmod -R 755 /root
 
 COPY --from=builder /workspace .
 
-ARG DEFAULT_PORT=80
-ENV PORT $DEFAULT_PORT
+ENV PORT $PORT
 
 EXPOSE $PORT
 
